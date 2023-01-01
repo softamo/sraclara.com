@@ -7,5 +7,4 @@ fi
 cd infra
 cdk deploy --require-approval never --profile sraclara
 cd ..
-echo "deployed"
 exit $EXIT_STATUS
