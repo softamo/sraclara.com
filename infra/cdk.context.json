@@ -1,1 +1,6 @@
-{}
+{
+  "hosted-zone:account=031609686176:domainName=sraclara.com:region=us-east-1": {
+    "Id": "/hostedzone/Z0192245QMXYYE24MKKD",
+    "Name": "sraclara.com."
+  }
+}

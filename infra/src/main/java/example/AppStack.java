@@ -1,5 +1,6 @@
 package example;
 
+import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.certificatemanager.Certificate;
@@ -19,13 +20,16 @@ import software.amazon.awscdk.services.route53.HostedZoneProviderProps;
 import software.amazon.awscdk.services.route53.IHostedZone;
 import software.amazon.awscdk.services.route53.RecordTarget;
 import software.amazon.awscdk.services.route53.targets.CloudFrontTarget;
+import software.amazon.awscdk.services.s3.BlockPublicAccess;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.deployment.BucketDeployment;
-import software.amazon.awscdk.services.s3.deployment.Source;
 import software.constructs.Construct;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AppStack extends Stack {
     private final Project project;
@@ -49,6 +53,10 @@ public class AppStack extends Stack {
             Bucket webBucket = createBucket(project.getName() + "-s3-web");
             createBucketDeployment(webBucket, website.getPath());
             createCloudFrontDistribution(website.getSubdomain(), cert, webBucket, zone, website.getDefaultRootObject());
+            CfnOutput.Builder.create(this, "bucketName")
+                            .exportName("bucketName")
+                            .value(webBucket.getBucketName())
+                    .build();
         }
     }
 
@@ -68,12 +76,15 @@ public class AppStack extends Stack {
     }
 
     private Bucket createBucket(String id) {
-        return Bucket.Builder.create(this, id).build();
+        return Bucket.Builder.create(this, id)
+                .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
+                .build();
     }
 
     private void createBucketDeployment(Bucket bucket, String path) {
         BucketDeployment.Builder.create(this, project.getName() + "-s3-deployment")
-                .sources(Collections.singletonList(Source.asset("../"+ path)))
+                .sources(Collections.emptyList())
+                //.sources(Collections.singletonList(Source.asset("../"+ path)))
                 .destinationBucket(bucket)
                 .build();
     }
@@ -85,6 +96,8 @@ public class AppStack extends Stack {
                                                                    String defaultRootObject) {
         String domainName = subdomain != null ?
                 subdomain + "." + project.getDomainName() : project.getDomainName();
+        List<String> aliases = Stream.of(domainName, project.getDomainName()).distinct().collect(Collectors.toList());
+        //aliases = Collections.emptyList();
         CloudFrontWebDistribution cloudFrontWebDistribution = CloudFrontWebDistribution.Builder.create(this,
                 project.getName() + "-" + subdomain  + "-cloudfront-distribution")
                 .originConfigs(Collections.singletonList(SourceConfiguration.builder()
@@ -101,14 +114,16 @@ public class AppStack extends Stack {
                         .build()))
                 .defaultRootObject(defaultRootObject)
                 .viewerCertificate(ViewerCertificate.fromAcmCertificate(certificate, ViewerCertificateOptions.builder()
-                        .aliases(Collections.singletonList(domainName))
+                        .aliases(aliases)
                         .build()))
                 .build();
-        ARecord.Builder.create(this, project.getName() + "-a-record-" + "-" + subdomain  + "-cloudfront-distribution")
-                .zone(zone)
-                .recordName(domainName)
-                .target(RecordTarget.fromAlias(new CloudFrontTarget(cloudFrontWebDistribution)))
-                .build();
+        for (String alias : aliases) {
+            ARecord.Builder.create(this, project.getName() + "-a-record-" + "-" + alias + "-cloudfront-distribution")
+                    .zone(zone)
+                    .recordName(alias)
+                    .target(RecordTarget.fromAlias(new CloudFrontTarget(cloudFrontWebDistribution)))
+                    .build();
+        }
         return cloudFrontWebDistribution;
     }
 }

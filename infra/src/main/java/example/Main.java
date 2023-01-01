@@ -11,7 +11,7 @@ public class Main {
         Project project = null;
         project = new Project("sraclara",
                 "sraclara.com",
-                Collections.singletonList(new Website("www", "web"))
+                Collections.singletonList(new Website(null, "web"))
                 );
         App app = new App();
         new AppStack(project, app, project.getName() + "AppStack", StackProps.builder()
