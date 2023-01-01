@@ -1,2 +1,6 @@
 .DS_Store
 .nova
+.gradle
+build
+cdk.out
+.idea
