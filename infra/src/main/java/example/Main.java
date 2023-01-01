@@ -17,7 +17,7 @@ public class Main {
         new AppStack(project, app, project.getName() + "AppStack", StackProps.builder()
                 .env(Environment.builder()
                         .account("031609686176")
-                        .region("eu-south-2")
+                        .region("us-east-1")
                         .build())
                 .build());
         app.synth();
